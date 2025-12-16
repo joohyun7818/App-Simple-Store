@@ -176,6 +176,34 @@ export function useProductCardStyle() {
 }
 
 /**
+ * app_rule1 플래그 기반 체크아웃 버튼 텍스트를 가져오는 훅
+ */
+export function useCheckoutButton() {
+  const [decision] = useDecision(FEATURE_FLAGS.APP_RULE1);
+
+  return useMemo(() => {
+    const variables = decision.variables as Record<string, unknown>;
+    const isEnabled = decision.enabled;
+    
+    // app_rule1이 on(enabled)이면 변수에서 가져온 값 사용, off면 기본값 사용
+    if (isEnabled) {
+      return {
+        checkoutButtonText:
+          (variables[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT] as string) ??
+          DEFAULT_VALUES[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT],
+        isEnabled: true,
+      };
+    }
+    
+    // flag가 off이면 기본값 사용
+    return {
+      checkoutButtonText: DEFAULT_VALUES[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT],
+      isEnabled: false,
+    };
+  }, [decision]);
+}
+
+/**
  * 모든 Optimizely 변수를 한 번에 가져오는 통합 훅
  * 
  * ⚠️ 성능 주의사항:

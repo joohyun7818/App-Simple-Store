@@ -13,6 +13,7 @@ import { useUIConfig } from "../context/UIConfigContext";
 import type { CartItem } from "../types";
 import { AppHeader } from "../components/AppHeader";
 import { useAuth } from "../context/AuthContext";
+import { useCheckoutButton } from "../optimizely/useOptimizelyVariables";
 
 export function CartScreen({
   onGoHome,
@@ -27,6 +28,7 @@ export function CartScreen({
   const { user, logout } = useAuth();
   const { cart, resetProducts, changeQuantity, removeItemFromCart, checkout } =
     useStore();
+  const { checkoutButtonText } = useCheckoutButton();
 
   const cartItemCount = useMemo(
     () => cart.reduce((acc, item) => acc + item.quantity, 0),
@@ -243,7 +245,7 @@ export function CartScreen({
               },
             ]}
           >
-            <Text style={styles.primaryText}>주문하기</Text>
+            <Text style={styles.primaryText}>{checkoutButtonText}</Text>
           </Pressable>
         </View>
       </View>
