@@ -201,14 +201,26 @@ export function useOptimizelyConfig() {
   const freeShipping = useFreeShipping();
   const productCardStyle = useProductCardStyle();
 
-  return {
-    uiTheme,
-    discountPromotion,
-    productGrid,
-    cartCTA,
-    headerMessage,
-    featuredCategories,
-    freeShipping,
-    productCardStyle,
-  };
+  return useMemo(
+    () => ({
+      uiTheme,
+      discountPromotion,
+      productGrid,
+      cartCTA,
+      headerMessage,
+      featuredCategories,
+      freeShipping,
+      productCardStyle,
+    }),
+    [
+      uiTheme,
+      discountPromotion,
+      productGrid,
+      cartCTA,
+      headerMessage,
+      featuredCategories,
+      freeShipping,
+      productCardStyle,
+    ]
+  );
 }
