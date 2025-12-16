@@ -17,10 +17,10 @@ export function useUITheme() {
     
     return {
       primaryColor:
-        (variables[VARIABLE_KEYS.PRIMARY_COLOR] as string) ||
+        (variables[VARIABLE_KEYS.PRIMARY_COLOR] as string) ??
         DEFAULT_VALUES[VARIABLE_KEYS.PRIMARY_COLOR],
       themeName:
-        (variables[VARIABLE_KEYS.THEME_NAME] as string) ||
+        (variables[VARIABLE_KEYS.THEME_NAME] as string) ??
         DEFAULT_VALUES[VARIABLE_KEYS.THEME_NAME],
     };
   }, [decision]);
@@ -40,10 +40,10 @@ export function useDiscountPromotion() {
         (variables[VARIABLE_KEYS.DISCOUNT_ENABLED] as boolean) ??
         DEFAULT_VALUES[VARIABLE_KEYS.DISCOUNT_ENABLED],
       message:
-        (variables[VARIABLE_KEYS.DISCOUNT_MESSAGE] as string) ||
+        (variables[VARIABLE_KEYS.DISCOUNT_MESSAGE] as string) ??
         DEFAULT_VALUES[VARIABLE_KEYS.DISCOUNT_MESSAGE],
       badgeText:
-        (variables[VARIABLE_KEYS.DISCOUNT_BADGE_TEXT] as string) ||
+        (variables[VARIABLE_KEYS.DISCOUNT_BADGE_TEXT] as string) ??
         DEFAULT_VALUES[VARIABLE_KEYS.DISCOUNT_BADGE_TEXT],
     };
   }, [decision]);
@@ -80,13 +80,13 @@ export function useCartCTA() {
     
     return {
       addToCartText:
-        (variables[VARIABLE_KEYS.ADD_TO_CART_TEXT] as string) ||
+        (variables[VARIABLE_KEYS.ADD_TO_CART_TEXT] as string) ??
         DEFAULT_VALUES[VARIABLE_KEYS.ADD_TO_CART_TEXT],
       checkoutButtonText:
-        (variables[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT] as string) ||
+        (variables[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT] as string) ??
         DEFAULT_VALUES[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT],
       continueShoppingText:
-        (variables[VARIABLE_KEYS.CONTINUE_SHOPPING_TEXT] as string) ||
+        (variables[VARIABLE_KEYS.CONTINUE_SHOPPING_TEXT] as string) ??
         DEFAULT_VALUES[VARIABLE_KEYS.CONTINUE_SHOPPING_TEXT],
     };
   }, [decision]);
@@ -103,10 +103,10 @@ export function useHeaderMessage() {
     
     return {
       message:
-        (variables[VARIABLE_KEYS.HEADER_MESSAGE] as string) ||
+        (variables[VARIABLE_KEYS.HEADER_MESSAGE] as string) ??
         DEFAULT_VALUES[VARIABLE_KEYS.HEADER_MESSAGE],
       subtitle:
-        (variables[VARIABLE_KEYS.HEADER_SUBTITLE] as string) ||
+        (variables[VARIABLE_KEYS.HEADER_SUBTITLE] as string) ??
         DEFAULT_VALUES[VARIABLE_KEYS.HEADER_SUBTITLE],
     };
   }, [decision]);
@@ -178,9 +178,18 @@ export function useProductCardStyle() {
 /**
  * 모든 Optimizely 변수를 한 번에 가져오는 통합 훅
  * 
- * 주의: 이 훅은 모든 Feature Flag를 한 번에 호출합니다.
- * 성능 최적화를 위해, 필요한 변수만 사용하는 경우 개별 훅을 사용하세요.
- * 예: useUITheme(), useCartCTA() 등
+ * ⚠️ 성능 주의사항:
+ * 이 훅은 8개의 개별 Feature Flag를 모두 호출하여 8번의 useDecision을 실행합니다.
+ * 
+ * 권장사항:
+ * - 필요한 변수만 사용하는 경우 개별 훅을 사용하세요 (예: useUITheme(), useCartCTA())
+ * - 이 통합 훅은 대부분의 변수가 필요한 경우에만 사용하세요
+ * - 컴포넌트 최상위 레벨에서만 호출하고, 렌더링 중간에 호출하지 마세요
+ * 
+ * 예시:
+ * ✅ 좋은 사용: const { uiTheme, cartCTA } = useOptimizelyConfig(); // 여러 변수 필요
+ * ✅ 좋은 사용: const { primaryColor } = useUITheme(); // 하나의 그룹만 필요
+ * ❌ 나쁜 사용: 모든 변수가 필요하지 않은데 useOptimizelyConfig() 사용
  */
 export function useOptimizelyConfig() {
   const uiTheme = useUITheme();
