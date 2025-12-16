@@ -177,6 +177,14 @@ export function useProductCardStyle() {
 
 /**
  * app_rule1 플래그 기반 체크아웃 버튼 텍스트를 가져오는 훅
+ * 
+ * 참고: 이 훅은 useCartCTA와 별개로 동작합니다.
+ * useCartCTA는 CART_CTA_EXPERIMENT 플래그를 사용하여 CTA 버튼 텍스트를 A/B 테스트하는 반면,
+ * 이 훅은 APP_RULE1 플래그를 사용하여 특정 비즈니스 규칙에 따라 체크아웃 버튼을 제어합니다.
+ * 
+ * 두 훅을 분리함으로써 다음을 가능하게 합니다:
+ * - APP_RULE1: 특정 조건/규칙 기반 버튼 제어 (on/off)
+ * - CART_CTA_EXPERIMENT: 전환율 최적화를 위한 A/B 테스트
  */
 export function useCheckoutButton() {
   const [decision] = useDecision(FEATURE_FLAGS.APP_RULE1);
