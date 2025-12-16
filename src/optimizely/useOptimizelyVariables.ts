@@ -60,10 +60,10 @@ export function useProductGridLayout() {
     
     return {
       columns:
-        (variables[VARIABLE_KEYS.GRID_COLUMNS] as number) ||
+        (variables[VARIABLE_KEYS.GRID_COLUMNS] as number) ??
         DEFAULT_VALUES[VARIABLE_KEYS.GRID_COLUMNS],
       imageHeight:
-        (variables[VARIABLE_KEYS.PRODUCT_IMAGE_HEIGHT] as number) ||
+        (variables[VARIABLE_KEYS.PRODUCT_IMAGE_HEIGHT] as number) ??
         DEFAULT_VALUES[VARIABLE_KEYS.PRODUCT_IMAGE_HEIGHT],
     };
   }, [decision]);
@@ -143,7 +143,7 @@ export function useFreeShipping() {
     
     return {
       minAmount:
-        (variables[VARIABLE_KEYS.FREE_SHIPPING_MIN_AMOUNT] as number) ||
+        (variables[VARIABLE_KEYS.FREE_SHIPPING_MIN_AMOUNT] as number) ??
         DEFAULT_VALUES[VARIABLE_KEYS.FREE_SHIPPING_MIN_AMOUNT],
       showInfo:
         (variables[VARIABLE_KEYS.SHOW_SHIPPING_INFO] as boolean) ??
@@ -166,7 +166,7 @@ export function useProductCardStyle() {
         (variables[VARIABLE_KEYS.SHOW_PRODUCT_DESCRIPTION] as boolean) ??
         DEFAULT_VALUES[VARIABLE_KEYS.SHOW_PRODUCT_DESCRIPTION],
       borderRadius:
-        (variables[VARIABLE_KEYS.PRODUCT_CARD_BORDER_RADIUS] as number) ||
+        (variables[VARIABLE_KEYS.PRODUCT_CARD_BORDER_RADIUS] as number) ??
         DEFAULT_VALUES[VARIABLE_KEYS.PRODUCT_CARD_BORDER_RADIUS],
       showAddToCartIcon:
         (variables[VARIABLE_KEYS.SHOW_ADD_TO_CART_ICON] as boolean) ??
