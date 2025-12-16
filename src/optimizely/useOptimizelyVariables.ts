@@ -4,6 +4,7 @@ import {
   FEATURE_FLAGS,
   VARIABLE_KEYS,
   DEFAULT_VALUES,
+  AB_TEST_VARIATIONS,
 } from "./optimizelyVariables";
 
 /**
@@ -178,35 +179,33 @@ export function useProductCardStyle() {
 /**
  * app_rule1 플래그 기반 체크아웃 버튼 텍스트를 가져오는 훅
  * 
- * 참고: 이 훅은 useCartCTA와 별개로 동작합니다.
- * useCartCTA는 CART_CTA_EXPERIMENT 플래그를 사용하여 CTA 버튼 텍스트를 A/B 테스트하는 반면,
- * 이 훅은 APP_RULE1 플래그를 사용하여 특정 비즈니스 규칙에 따라 체크아웃 버튼을 제어합니다.
+ * Optimizely의 app_rule1 플래그의 decide 결과에 따라 CHECKOUT_BUTTONS 변형에서
+ * 해당하는 버튼 텍스트를 반환합니다.
  * 
- * 두 훅을 분리함으로써 다음을 가능하게 합니다:
- * - APP_RULE1: 특정 조건/규칙 기반 버튼 제어 (on/off)
- * - CART_CTA_EXPERIMENT: 전환율 최적화를 위한 A/B 테스트
+ * - 플래그가 ON이고 variationKey가 있으면: CHECKOUT_BUTTONS[variationKey] 사용
+ * - 플래그가 OFF이거나 매칭되는 값이 없으면: 기본값 "주문하기" 사용
  */
 export function useCheckoutButton() {
   const [decision] = useDecision(FEATURE_FLAGS.APP_RULE1);
 
   return useMemo(() => {
-    const variables = decision.variables as Record<string, unknown>;
     const isEnabled = decision.enabled;
+    const variationKey = decision.variationKey as keyof typeof AB_TEST_VARIATIONS.CHECKOUT_BUTTONS | null;
     
-    // app_rule1이 on(enabled)이면 변수에서 가져온 값 사용, off면 기본값 사용
-    if (isEnabled) {
+    // app_rule1이 on(enabled)이고 variationKey가 있으면 CHECKOUT_BUTTONS에서 해당 값 사용
+    if (isEnabled && variationKey && variationKey in AB_TEST_VARIATIONS.CHECKOUT_BUTTONS) {
       return {
-        checkoutButtonText:
-          (variables[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT] as string) ??
-          DEFAULT_VALUES[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT],
+        checkoutButtonText: AB_TEST_VARIATIONS.CHECKOUT_BUTTONS[variationKey],
         isEnabled: true,
+        variationKey,
       };
     }
     
-    // flag가 off이면 기본값 사용
+    // flag가 off이거나 매칭되는 값이 없으면 기본값 사용
     return {
-      checkoutButtonText: DEFAULT_VALUES[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT],
+      checkoutButtonText: AB_TEST_VARIATIONS.CHECKOUT_BUTTONS.control,
       isEnabled: false,
+      variationKey: null,
     };
   }, [decision]);
 }

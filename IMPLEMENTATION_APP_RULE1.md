@@ -22,28 +22,31 @@ export const FEATURE_FLAGS = {
 ```typescript
 /**
  * app_rule1 플래그 기반 체크아웃 버튼 텍스트를 가져오는 훅
+ * 
+ * Optimizely의 app_rule1 플래그의 decide 결과에 따라 CHECKOUT_BUTTONS 변형에서
+ * 해당하는 버튼 텍스트를 반환합니다.
  */
 export function useCheckoutButton() {
   const [decision] = useDecision(FEATURE_FLAGS.APP_RULE1);
 
   return useMemo(() => {
-    const variables = decision.variables as Record<string, unknown>;
     const isEnabled = decision.enabled;
+    const variationKey = decision.variationKey as keyof typeof AB_TEST_VARIATIONS.CHECKOUT_BUTTONS | null;
     
-    // app_rule1이 on(enabled)이면 변수에서 가져온 값 사용, off면 기본값 사용
-    if (isEnabled) {
+    // app_rule1이 on(enabled)이고 variationKey가 있으면 CHECKOUT_BUTTONS에서 해당 값 사용
+    if (isEnabled && variationKey && variationKey in AB_TEST_VARIATIONS.CHECKOUT_BUTTONS) {
       return {
-        checkoutButtonText:
-          (variables[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT] as string) ??
-          DEFAULT_VALUES[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT],
+        checkoutButtonText: AB_TEST_VARIATIONS.CHECKOUT_BUTTONS[variationKey],
         isEnabled: true,
+        variationKey,
       };
     }
     
-    // flag가 off이면 기본값 사용
+    // flag가 off이거나 매칭되는 값이 없으면 기본값 사용
     return {
-      checkoutButtonText: DEFAULT_VALUES[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT],
+      checkoutButtonText: AB_TEST_VARIATIONS.CHECKOUT_BUTTONS.control,
       isEnabled: false,
+      variationKey: null,
     };
   }, [decision]);
 }
@@ -67,13 +70,21 @@ export function CartScreen({ ... }) {
 
 1. **Optimizely SDK 초기화**: 앱 시작 시 Optimizely SDK가 초기화되고 설정된 SDK 키로 연결됩니다.
 
-2. **플래그 상태 확인**: `useCheckoutButton()` 훅이 `app_rule1` 플래그의 상태를 확인합니다.
+2. **플래그 상태 확인**: `useCheckoutButton()` 훅이 `app_rule1` 플래그의 decide 결과를 확인합니다.
 
-3. **조건부 텍스트 적용**:
-   - **ON (enabled = true)**: Optimizely 변수 `checkout_button_text`의 값을 사용
-   - **OFF (enabled = false)**: 기본값 "주문하기" 사용
+3. **Variation Key 매핑**: 
+   - Optimizely에서 반환하는 `variationKey` (예: "control", "variant_a", "variant_b", "variant_c")를 사용
+   - `AB_TEST_VARIATIONS.CHECKOUT_BUTTONS` 객체에서 해당 키의 값을 조회
+   - **control**: "주문하기"
+   - **variant_a**: "결제하기"
+   - **variant_b**: "바로 구매"
+   - **variant_c**: "지금 구매하기"
 
-4. **실시간 반영**: 플래그 상태가 변경되면 React의 useMemo를 통해 자동으로 UI가 업데이트됩니다.
+4. **조건부 텍스트 적용**:
+   - **ON (enabled = true)**: Optimizely의 variationKey에 해당하는 CHECKOUT_BUTTONS 값 사용
+   - **OFF (enabled = false)**: 기본값 "주문하기" (control) 사용
+
+5. **실시간 반영**: 플래그 상태가 변경되면 React의 useMemo를 통해 자동으로 UI가 업데이트됩니다.
 
 ## Optimizely 설정 방법
 
@@ -86,35 +97,27 @@ Optimizely 대시보드에서:
 3. Flag 키를 `app_rule1`로 설정
 4. **Create Flag** 클릭
 
-### 2. 변수 설정
+### 2. 변형(Variation) 설정
 
-Feature Flag에 변수 추가:
-
-1. 생성한 `app_rule1` 플래그 선택
-2. **Variables** 섹션으로 이동
-3. **Add Variable** 클릭
-4. 변수 설정:
-   - **Key**: `checkout_button_text`
-   - **Type**: String
-   - **Default Value**: `"주문하기"`
-
-### 3. 변형(Variation) 설정
-
-다양한 버튼 텍스트를 테스트하기 위해 변형을 추가:
+**app_rule1** 플래그에서 변형을 설정합니다. Optimizely는 각 variation에 자동으로 키를 할당합니다:
 
 **Control (기본값)**:
-- `checkout_button_text`: "주문하기"
+- Variation Key: `control` (자동 할당)
+- 버튼 텍스트: "주문하기"
 
 **Variation A**:
-- `checkout_button_text`: "결제하기"
+- Variation Key: `variant_a` (자동 할당)
+- 버튼 텍스트: "결제하기"
 
 **Variation B**:
-- `checkout_button_text`: "바로 구매"
+- Variation Key: `variant_b` (자동 할당)
+- 버튼 텍스트: "바로 구매"
 
 **Variation C**:
-- `checkout_button_text`: "지금 구매하기"
+- Variation Key: `variant_c` (자동 할당)
+- 버튼 텍스트: "지금 구매하기"
 
-### 4. 실험 설정
+### 3. 실험 설정
 
 1. **Experiments** 탭으로 이동
 2. **Create New Experiment** 클릭
@@ -145,9 +148,12 @@ Feature Flag에 변수 추가:
 
 #### ON 상태 테스트:
 1. Optimizely 대시보드에서 `app_rule1` 플래그를 **ON**으로 설정
-2. 변수 값을 원하는 텍스트로 설정 (예: "결제하기")
+2. 특정 variation을 선택 (예: variant_a)
 3. 앱을 재시작하거나 장바구니 화면을 새로고침
-4. 버튼 텍스트가 변경된 것을 확인
+4. 버튼 텍스트가 해당 variation의 값으로 변경된 것을 확인
+   - variant_a → "결제하기"
+   - variant_b → "바로 구매"
+   - variant_c → "지금 구매하기"
 
 #### OFF 상태 테스트:
 1. Optimizely 대시보드에서 `app_rule1` 플래그를 **OFF**로 설정
@@ -179,12 +185,13 @@ import { useTrack } from "@optimizely/react-sdk";
 
 function CartScreen() {
   const { track } = useTrack();
-  const { checkoutButtonText } = useCheckoutButton();
+  const { checkoutButtonText, variationKey } = useCheckoutButton();
   
   const handleCheckout = async () => {
     // 이벤트 추적
     track("checkout_button_clicked", {
       buttonText: checkoutButtonText,
+      variationKey: variationKey,
       cartTotal: total,
     });
     
@@ -202,9 +209,25 @@ function CartScreen() {
 
 2. **로그인 필요**: Optimizely 사용자 ID는 로그인한 사용자 정보를 기반으로 생성됩니다.
 
-3. **캐싱**: Optimizely SDK는 datafile을 캐싱하므로, 플래그 변경 후 즉시 반영되지 않을 수 있습니다. 앱을 재시작하면 최신 설정을 가져옵니다.
+3. **Variation Key 매칭**: 코드는 `AB_TEST_VARIATIONS.CHECKOUT_BUTTONS`에 정의된 키("control", "variant_a", "variant_b", "variant_c")를 사용합니다. Optimizely에서 다른 키를 사용하는 경우 매칭되지 않을 수 있습니다.
 
-4. **기본값**: 플래그가 OFF이거나 네트워크 오류가 발생한 경우 항상 기본값 "주문하기"가 표시됩니다.
+4. **캐싱**: Optimizely SDK는 datafile을 캐싱하므로, 플래그 변경 후 즉시 반영되지 않을 수 있습니다. 앱을 재시작하면 최신 설정을 가져옵니다.
+
+5. **기본값**: 플래그가 OFF이거나 네트워크 오류가 발생한 경우, 또는 variationKey가 매칭되지 않는 경우 항상 기본값 "주문하기" (control)가 표시됩니다.
+
+## CHECKOUT_BUTTONS 변형 커스터마이징
+
+다른 버튼 텍스트를 사용하려면 `src/optimizely/optimizelyVariables.ts`의 `CHECKOUT_BUTTONS` 객체를 수정하세요:
+
+```typescript
+CHECKOUT_BUTTONS: {
+  control: "주문하기",
+  variant_a: "결제하기",
+  variant_b: "바로 구매",
+  variant_c: "지금 구매하기",
+  // 필요에 따라 더 많은 변형 추가 가능
+},
+```
 
 ## 확장 가능성
 
@@ -212,7 +235,7 @@ function CartScreen() {
 
 1. **다른 버튼에 적용**: "쇼핑 계속하기", "로그인" 등 다른 CTA 버튼에도 동일한 패턴 적용
 
-2. **버튼 스타일 변경**: 텍스트뿐만 아니라 색상, 크기 등도 Optimizely 변수로 제어
+2. **버튼 스타일 변경**: 텍스트뿐만 아니라 색상, 크기 등도 variation별로 제어
 
 3. **조건부 표시**: 버튼을 완전히 숨기거나 다른 버튼으로 교체
 
@@ -224,9 +247,10 @@ function CartScreen() {
 
 1. **SDK 키 확인**: 환경 변수가 올바르게 설정되었는지 확인
 2. **플래그 상태 확인**: Optimizely 대시보드에서 플래그가 활성화되었는지 확인
-3. **네트워크 확인**: 앱이 인터넷에 연결되어 있는지 확인
-4. **로그 확인**: 콘솔에서 Optimizely 관련 오류 메시지 확인
-5. **앱 재시작**: 앱을 완전히 종료하고 다시 시작
+3. **Variation Key 확인**: Optimizely가 반환하는 variationKey가 "control", "variant_a", "variant_b", "variant_c" 중 하나인지 확인
+4. **네트워크 확인**: 앱이 인터넷에 연결되어 있는지 확인
+5. **로그 확인**: 콘솔에서 Optimizely 관련 오류 메시지 확인
+6. **앱 재시작**: 앱을 완전히 종료하고 다시 시작
 
 ### 디버깅 팁:
 
@@ -238,8 +262,10 @@ export function useCheckoutButton() {
     // 디버깅용 로그
     console.log('app_rule1 decision:', {
       enabled: decision.enabled,
-      variables: decision.variables,
       variationKey: decision.variationKey,
+      matchedText: decision.variationKey && decision.variationKey in AB_TEST_VARIATIONS.CHECKOUT_BUTTONS
+        ? AB_TEST_VARIATIONS.CHECKOUT_BUTTONS[decision.variationKey as keyof typeof AB_TEST_VARIATIONS.CHECKOUT_BUTTONS]
+        : 'No match',
     });
     
     // ... 기존 코드 ...
@@ -251,5 +277,6 @@ export function useCheckoutButton() {
 
 - [Optimizely React SDK 문서](https://docs.developers.optimizely.com/feature-experimentation/docs/react-sdk)
 - [Optimizely Feature Flags 가이드](https://docs.developers.optimizely.com/feature-experimentation/docs/create-feature-flags)
+- [Optimizely Variations 가이드](https://docs.developers.optimizely.com/feature-experimentation/docs/create-variations)
 - [프로젝트 Optimizely 가이드](./OPTIMIZELY_AB_TESTING_GUIDE.md)
 - [프로젝트 Quick Start 가이드](./OPTIMIZELY_QUICK_START.md)
