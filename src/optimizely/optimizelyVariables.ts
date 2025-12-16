@@ -33,6 +33,9 @@ export const FEATURE_FLAGS = {
   
   // 제품 카드 스타일 실험
   PRODUCT_CARD_STYLE: "product_card_style",
+  
+  // 주문 버튼 규칙
+  APP_RULE1: "app_rule1",
 } as const;
 
 /**

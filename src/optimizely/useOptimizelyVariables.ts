@@ -4,6 +4,7 @@ import {
   FEATURE_FLAGS,
   VARIABLE_KEYS,
   DEFAULT_VALUES,
+  AB_TEST_VARIATIONS,
 } from "./optimizelyVariables";
 
 /**
@@ -171,6 +172,40 @@ export function useProductCardStyle() {
       showAddToCartIcon:
         (variables[VARIABLE_KEYS.SHOW_ADD_TO_CART_ICON] as boolean) ??
         DEFAULT_VALUES[VARIABLE_KEYS.SHOW_ADD_TO_CART_ICON],
+    };
+  }, [decision]);
+}
+
+/**
+ * app_rule1 플래그 기반 체크아웃 버튼 텍스트를 가져오는 훅
+ * 
+ * Optimizely의 app_rule1 플래그의 decide 결과에 따라 CHECKOUT_BUTTONS 변형에서
+ * 해당하는 버튼 텍스트를 반환합니다.
+ * 
+ * - 플래그가 ON이고 variationKey가 있으면: CHECKOUT_BUTTONS[variationKey] 사용
+ * - 플래그가 OFF이거나 매칭되는 값이 없으면: 기본값 "주문하기" 사용
+ */
+export function useCheckoutButton() {
+  const [decision] = useDecision(FEATURE_FLAGS.APP_RULE1);
+
+  return useMemo(() => {
+    const isEnabled = decision.enabled;
+    const variationKey = decision.variationKey as keyof typeof AB_TEST_VARIATIONS.CHECKOUT_BUTTONS | null;
+    
+    // app_rule1이 on(enabled)이고 variationKey가 있으면 CHECKOUT_BUTTONS에서 해당 값 사용
+    if (isEnabled && variationKey && variationKey in AB_TEST_VARIATIONS.CHECKOUT_BUTTONS) {
+      return {
+        checkoutButtonText: AB_TEST_VARIATIONS.CHECKOUT_BUTTONS[variationKey],
+        isEnabled: true,
+        variationKey,
+      };
+    }
+    
+    // flag가 off이거나 매칭되는 값이 없으면 기본값 사용
+    return {
+      checkoutButtonText: AB_TEST_VARIATIONS.CHECKOUT_BUTTONS.control,
+      isEnabled: false,
+      variationKey: null,
     };
   }, [decision]);
 }
