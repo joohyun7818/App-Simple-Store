@@ -9,7 +9,6 @@ import React, {
 import { Alert } from "react-native";
 import type { User } from "../types";
 import { loginUser, registerUser } from "../services/api";
-import { useUIConfig } from "./UIConfigContext";
 
 const STORAGE_KEY = "currentUser";
 
@@ -27,16 +26,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { setUIConfig, resetUIConfig } = useUIConfig();
+
+  const sanitizeUser = (u: any): User => ({
+    email: String(u?.email ?? ""),
+    name: String(u?.name ?? ""),
+    country: u?.country ? String(u.country) : undefined,
+  });
 
   useEffect(() => {
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
-          const parsed = JSON.parse(raw) as User;
-          setUser(parsed);
-          if (parsed.uiConfig) setUIConfig(parsed.uiConfig);
+          const parsed = JSON.parse(raw) as unknown;
+          const restored = sanitizeUser(parsed);
+          if (restored.email && restored.name) {
+            setUser(restored);
+          } else {
+            await AsyncStorage.removeItem(STORAGE_KEY);
+          }
         }
       } catch {
         await AsyncStorage.removeItem(STORAGE_KEY);
@@ -44,14 +52,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     })();
-  }, [setUIConfig]);
+  }, []);
 
   const login = async (email: string, password: string) => {
     try {
       const loggedInUser = await loginUser(email, password);
-      setUser(loggedInUser);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(loggedInUser));
-      if (loggedInUser.uiConfig) setUIConfig(loggedInUser.uiConfig);
+      const sanitized = sanitizeUser(loggedInUser);
+      setUser(sanitized);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
       return true;
     } catch (e: any) {
       Alert.alert(
@@ -65,9 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (email: string, name: string, password: string) => {
     try {
       const registeredUser = await registerUser(email, name, password);
-      setUser(registeredUser);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(registeredUser));
-      if (registeredUser.uiConfig) setUIConfig(registeredUser.uiConfig);
+      const sanitized = sanitizeUser(registeredUser);
+      setUser(sanitized);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
       return true;
     } catch (e: any) {
       Alert.alert(
@@ -81,7 +89,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     await AsyncStorage.removeItem(STORAGE_KEY);
     setUser(null);
-    resetUIConfig();
   };
 
   const value = useMemo(
