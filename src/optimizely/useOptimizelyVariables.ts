@@ -123,7 +123,7 @@ export function useFeaturedCategories() {
     
     return {
       categories:
-        (variables[VARIABLE_KEYS.FEATURED_CATEGORIES] as string[]) ||
+        (variables[VARIABLE_KEYS.FEATURED_CATEGORIES] as string[]) ??
         DEFAULT_VALUES[VARIABLE_KEYS.FEATURED_CATEGORIES],
       showFilter:
         (variables[VARIABLE_KEYS.SHOW_CATEGORY_FILTER] as boolean) ??
@@ -177,6 +177,10 @@ export function useProductCardStyle() {
 
 /**
  * 모든 Optimizely 변수를 한 번에 가져오는 통합 훅
+ * 
+ * 주의: 이 훅은 모든 Feature Flag를 한 번에 호출합니다.
+ * 성능 최적화를 위해, 필요한 변수만 사용하는 경우 개별 훅을 사용하세요.
+ * 예: useUITheme(), useCartCTA() 등
  */
 export function useOptimizelyConfig() {
   const uiTheme = useUITheme();
