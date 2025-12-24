@@ -3,10 +3,8 @@ import {
   FEATURE_FLAGS,
   VARIABLE_KEYS,
   DEFAULT_VALUES,
+  getDefaultValue,
 } from "./optimizelyVariables";
-
-export const DEFAULT_CHECKOUT_BUTTON_TEXT =
-  DEFAULT_VALUES[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT];
 
 /**
  * app_rule1 플래그 기반 체크아웃 버튼 텍스트를 가져오는 훅
@@ -31,8 +29,10 @@ export function useCheckoutButton() {
 
   return {
     checkoutButtonText: decision.enabled
-      ? fromVariables ?? DEFAULT_CHECKOUT_BUTTON_TEXT
-      : DEFAULT_CHECKOUT_BUTTON_TEXT,
+      ? fromVariables ??
+        getDefaultValue<string>(VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT)
+      : getDefaultValue<string>(VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT),
     isEnabled: decision.enabled,
+    variationKey: decision.variationKey ?? null,
   };
 }

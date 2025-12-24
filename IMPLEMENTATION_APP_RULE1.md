@@ -11,7 +11,7 @@
 ```typescript
 export const FEATURE_FLAGS = {
   // ... 기존 플래그들 ...
-  
+
   // 주문 버튼 규칙
   APP_RULE1: "app_rule1",
 } as const;
@@ -22,33 +22,25 @@ export const FEATURE_FLAGS = {
 ```typescript
 /**
  * app_rule1 플래그 기반 체크아웃 버튼 텍스트를 가져오는 훅
- * 
- * Optimizely의 app_rule1 플래그의 decide 결과에 따라 CHECKOUT_BUTTONS 변형에서
- * 해당하는 버튼 텍스트를 반환합니다.
+ *
+ * Optimizely의 app_rule1 플래그의 decide 결과에서 변수값(`checkout_button_text` 또는 `CHECKOUT_BUTTONS`)을 읽고,
+ * 플래그가 ON이면 해당 값(또는 기본값)을 사용합니다. (변형 값을 코드에 하드코딩하지 않음)
  */
 export function useCheckoutButton() {
   const [decision] = useDecision(FEATURE_FLAGS.APP_RULE1);
+  const variables = decision.variables as Record<string, unknown>;
 
-  return useMemo(() => {
-    const isEnabled = decision.enabled;
-    const variationKey = decision.variationKey as keyof typeof AB_TEST_VARIATIONS.CHECKOUT_BUTTONS | null;
-    
-    // app_rule1이 on(enabled)이고 variationKey가 있으면 CHECKOUT_BUTTONS에서 해당 값 사용
-    if (isEnabled && variationKey && variationKey in AB_TEST_VARIATIONS.CHECKOUT_BUTTONS) {
-      return {
-        checkoutButtonText: AB_TEST_VARIATIONS.CHECKOUT_BUTTONS[variationKey],
-        isEnabled: true,
-        variationKey,
-      };
-    }
-    
-    // flag가 off이거나 매칭되는 값이 없으면 기본값 사용
-    return {
-      checkoutButtonText: AB_TEST_VARIATIONS.CHECKOUT_BUTTONS.control,
-      isEnabled: false,
-      variationKey: null,
-    };
-  }, [decision]);
+  const fromVariables =
+    (variables["CHECKOUT_BUTTONS"] as string | undefined) ??
+    (variables[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT] as string | undefined);
+
+  return {
+    checkoutButtonText: decision.enabled
+      ? fromVariables ?? DEFAULT_VALUES[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT]
+      : DEFAULT_VALUES[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT],
+    isEnabled: decision.enabled,
+    variationKey: decision.variationKey ?? null,
+  };
 }
 ```
 
@@ -60,7 +52,7 @@ import { useCheckoutButton } from "../optimizely/useOptimizelyVariables";
 export function CartScreen({ ... }) {
   // ... 기존 코드 ...
   const { checkoutButtonText } = useCheckoutButton();
-  
+
   // ... 렌더링 코드 ...
   <Text style={styles.primaryText}>{checkoutButtonText}</Text>
 }
@@ -72,15 +64,14 @@ export function CartScreen({ ... }) {
 
 2. **플래그 상태 확인**: `useCheckoutButton()` 훅이 `app_rule1` 플래그의 decide 결과를 확인합니다.
 
-3. **Variation Key 매핑**: 
-   - Optimizely에서 반환하는 `variationKey` (예: "control", "variant_a", "variant_b", "variant_c")를 사용
-   - `AB_TEST_VARIATIONS.CHECKOUT_BUTTONS` 객체에서 해당 키의 값을 조회
-   - **control**: "주문하기"
-   - **variant_a**: "결제하기"
-   - **variant_b**: "바로 구매"
-   - **variant_c**: "지금 구매하기"
+3. **Variation / Variables**:
+
+   - Optimizely에서 반환하는 `variationKey`는 플랫폼에서 자동 할당됩니다 (예: "control", "variant_a" 등).
+   - 권장 방식: 각 variation에 `checkout_button_text` 같은 변수를 설정하고, 앱에서는 `decision.variables['checkout_button_text']`로 값을 읽어 사용하세요.
+   - 예: control variation의 `checkout_button_text` = "주문하기", variant_a의 `checkout_button_text` = "결제하기" 등 — 모든 값을 Optimizely 대시보드에서 관리합니다.
 
 4. **조건부 텍스트 적용**:
+
    - **ON (enabled = true)**: Optimizely의 variationKey에 해당하는 CHECKOUT_BUTTONS 값 사용
    - **OFF (enabled = false)**: 기본값 "주문하기" (control) 사용
 
@@ -102,18 +93,22 @@ Optimizely 대시보드에서:
 **app_rule1** 플래그에서 변형을 설정합니다. Optimizely는 각 variation에 자동으로 키를 할당합니다:
 
 **Control (기본값)**:
+
 - Variation Key: `control` (자동 할당)
 - 버튼 텍스트: "주문하기"
 
 **Variation A**:
+
 - Variation Key: `variant_a` (자동 할당)
 - 버튼 텍스트: "결제하기"
 
 **Variation B**:
+
 - Variation Key: `variant_b` (자동 할당)
 - 버튼 텍스트: "바로 구매"
 
 **Variation C**:
+
 - Variation Key: `variant_c` (자동 할당)
 - 버튼 텍스트: "지금 구매하기"
 
@@ -131,11 +126,13 @@ Optimizely 대시보드에서:
 ### 로컬 테스트
 
 1. **Optimizely SDK 키 설정**:
+
    ```bash
    EXPO_PUBLIC_OPTIMIZELY_SDK_KEY=<YOUR_SDK_KEY> npm start
    ```
 
 2. **앱 실행**:
+
    - iOS: `i` 키 입력
    - Android: `a` 키 입력
 
@@ -147,6 +144,7 @@ Optimizely 대시보드에서:
 ### Optimizely 대시보드에서 플래그 제어
 
 #### ON 상태 테스트:
+
 1. Optimizely 대시보드에서 `app_rule1` 플래그를 **ON**으로 설정
 2. 특정 variation을 선택 (예: variant_a)
 3. 앱을 재시작하거나 장바구니 화면을 새로고침
@@ -156,6 +154,7 @@ Optimizely 대시보드에서:
    - variant_c → "지금 구매하기"
 
 #### OFF 상태 테스트:
+
 1. Optimizely 대시보드에서 `app_rule1` 플래그를 **OFF**로 설정
 2. 앱을 재시작하거나 장바구니 화면을 새로고침
 3. 버튼 텍스트가 기본값 "주문하기"로 표시되는지 확인
@@ -186,7 +185,7 @@ import { useTrack } from "@optimizely/react-sdk";
 function CartScreen() {
   const { track } = useTrack();
   const { checkoutButtonText, variationKey } = useCheckoutButton();
-  
+
   const handleCheckout = async () => {
     // 이벤트 추적
     track("checkout_button_clicked", {
@@ -194,11 +193,11 @@ function CartScreen() {
       variationKey: variationKey,
       cartTotal: total,
     });
-    
+
     await checkout();
     onGoOrders();
   };
-  
+
   // ...
 }
 ```
@@ -209,7 +208,7 @@ function CartScreen() {
 
 2. **로그인 필요**: Optimizely 사용자 ID는 로그인한 사용자 정보를 기반으로 생성됩니다.
 
-3. **Variation Key 매칭**: 코드는 `AB_TEST_VARIATIONS.CHECKOUT_BUTTONS`에 정의된 키("control", "variant_a", "variant_b", "variant_c")를 사용합니다. Optimizely에서 다른 키를 사용하는 경우 매칭되지 않을 수 있습니다.
+3. **Variation Key / Variables**: 변형 키에 하드코딩된 매핑을 사용하지 말고, 각 variation에 `checkout_button_text` 같은 변수를 설정하세요. 앱은 `decision.variables['checkout_button_text']`로 값을 읽고, 값이 없으면 코드의 기본값을 fallback으로 사용합니다.
 
 4. **캐싱**: Optimizely SDK는 datafile을 캐싱하므로, 플래그 변경 후 즉시 반영되지 않을 수 있습니다. 앱을 재시작하면 최신 설정을 가져옵니다.
 
@@ -217,17 +216,17 @@ function CartScreen() {
 
 ## CHECKOUT_BUTTONS 변형 커스터마이징
 
-다른 버튼 텍스트를 사용하려면 `src/optimizely/optimizelyVariables.ts`의 `CHECKOUT_BUTTONS` 객체를 수정하세요:
+변형별 텍스트는 **Optimizely 대시보드에서 각 variation의 `checkout_button_text` 변수**로 설정하세요. 예시(대시보드에서 설정하는 값):
 
-```typescript
-CHECKOUT_BUTTONS: {
-  control: "주문하기",
-  variant_a: "결제하기",
-  variant_b: "바로 구매",
-  variant_c: "지금 구매하기",
-  // 필요에 따라 더 많은 변형 추가 가능
-},
+```json
+// variation: control
+{"checkout_button_text": "주문하기"}
+
+// variation: variant_a
+{"checkout_button_text": "결제하기"}
 ```
+
+로컬에서 예시가 필요하면 `tests/fixtures/ab-variations.ts`에 JSON 형태로 보관하고 테스트/스토리북에서 로드하세요. (프로덕션 번들에 포함하지 마세요.)
 
 ## 확장 가능성
 
@@ -259,15 +258,16 @@ export function useCheckoutButton() {
   const [decision] = useDecision(FEATURE_FLAGS.APP_RULE1);
 
   return useMemo(() => {
-    // 디버깅용 로그
-    console.log('app_rule1 decision:', {
+    // 디버깅용 로그 - variables를 직접 출력하고 fallback 여부 확인
+    console.log("app_rule1 decision:", {
       enabled: decision.enabled,
       variationKey: decision.variationKey,
-      matchedText: decision.variationKey && decision.variationKey in AB_TEST_VARIATIONS.CHECKOUT_BUTTONS
-        ? AB_TEST_VARIATIONS.CHECKOUT_BUTTONS[decision.variationKey as keyof typeof AB_TEST_VARIATIONS.CHECKOUT_BUTTONS]
-        : 'No match',
+      variables: decision.variables,
+      checkoutText:
+        decision.variables["checkout_button_text"] ??
+        DEFAULT_VALUES[VARIABLE_KEYS.CHECKOUT_BUTTON_TEXT],
     });
-    
+
     // ... 기존 코드 ...
   }, [decision]);
 }

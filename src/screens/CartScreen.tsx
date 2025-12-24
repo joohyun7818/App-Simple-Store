@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useTrackEvent } from "@optimizely/react-sdk";
 import { useStore } from "../context/StoreContext";
 import { useUIConfig } from "../context/UIConfigContext";
 import type { CartItem } from "../types";
@@ -28,7 +29,8 @@ export function CartScreen({
   const { user, logout } = useAuth();
   const { cart, resetProducts, changeQuantity, removeItemFromCart, checkout } =
     useStore();
-  const { checkoutButtonText } = useCheckoutButton();
+  const [trackEvent, clientReady] = useTrackEvent();
+  const { checkoutButtonText, variationKey, isEnabled } = useCheckoutButton();
 
   const cartItemCount = useMemo(
     () => cart.reduce((acc, item) => acc + item.quantity, 0),
@@ -234,6 +236,19 @@ export function CartScreen({
           </View>
           <Pressable
             onPress={async () => {
+              try {
+                if (clientReady) {
+                  trackEvent("order_placed", {
+                    buttonText: checkoutButtonText,
+                    variationKey,
+                    flagEnabled: isEnabled,
+                    cartItemCount,
+                    cartTotal: total,
+                  });
+                }
+              } catch {
+                // ignore tracking errors; checkout should still proceed
+              }
               await checkout();
               onGoOrders();
             }}
